@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "Article": {
+      "title": "Article",
+      "description": "A bilingual Marathi and English news article managed by the editorial CMS.",
+      "type": "object",
+      "properties": {
+        "titleEn": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "titleMr": { "type": "string", "minLength": 3, "maxLength": 240 },
+        "summaryEn": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "summaryMr": { "type": "string", "minLength": 10, "maxLength": 600 },
+        "contentEn": { "type": "string", "minLength": 20, "maxLength": 15000 },
+        "contentMr": { "type": "string", "minLength": 20, "maxLength": 18000 },
+        "category": { "type": "string", "enum": ["civic", "agriculture", "transit", "education", "politics"] },
+        "authorName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "isFeatured": { "type": "boolean" },
+        "isTrending": { "type": "boolean" },
+        "readTimeMinutes": { "type": "number" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titleEn", "titleMr", "summaryEn", "summaryMr", "contentEn", "contentMr", "category", "authorName", "authorId", "isFeatured", "isTrending", "readTimeMinutes", "status", "createdAt", "updatedAt"]
+    },
+    "LiveUpdate": {
+      "title": "LiveUpdate",
+      "description": "A real-time local journalism breaking update.",
+      "type": "object",
+      "properties": {
+        "textEn": { "type": "string", "minLength": 5, "maxLength": 300 },
+        "textMr": { "type": "string", "minLength": 5, "maxLength": 360 },
+        "locationEn": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "locationMr": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "category": { "type": "string", "enum": ["civic", "agriculture", "transit", "education", "politics"] },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["textEn", "textMr", "locationEn", "locationMr", "category", "authorId", "createdAt"]
+    },
+    "VideoReport": {
+      "title": "VideoReport",
+      "description": "A field journalism video report.",
+      "type": "object",
+      "properties": {
+        "titleEn": { "type": "string", "minLength": 3, "maxLength": 180 },
+        "titleMr": { "type": "string", "minLength": 3, "maxLength": 220 },
+        "summaryEn": { "type": "string", "minLength": 10, "maxLength": 400 },
+        "summaryMr": { "type": "string", "minLength": 10, "maxLength": 480 },
+        "duration": { "type": "string", "maxLength": 20 },
+        "thumbnailUrl": { "type": "string", "maxLength": 500 },
+        "videoUrl": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "enum": ["civic", "agriculture", "transit", "education", "politics"] },
+        "reporterEn": { "type": "string", "maxLength": 100 },
+        "reporterMr": { "type": "string", "maxLength": 120 },
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titleEn", "titleMr", "summaryEn", "summaryMr", "duration", "thumbnailUrl", "videoUrl", "category", "reporterEn", "reporterMr", "authorId", "createdAt"]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "Newsletter subscriber email record (PII isolated to admin).",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "language": { "type": "string", "enum": ["mr", "en"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "language", "createdAt"]
+    },
+    "AdSlot": {
+      "title": "AdSlot",
+      "description": "Third-party monetization ad slot for sidebar or article footer.",
+      "type": "object",
+      "properties": {
+        "placement": { "type": "string", "enum": ["sidebar_top", "article_footer"] },
+        "sponsorName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "headlineEn": { "type": "string", "minLength": 4, "maxLength": 160 },
+        "headlineMr": { "type": "string", "minLength": 4, "maxLength": 200 },
+        "ctaUrl": { "type": "string", "maxLength": 500 },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["placement", "sponsorName", "headlineEn", "headlineMr", "ctaUrl", "isActive", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/articles/{articleId}": {
+      "schema": { "$ref": "#/entities/Article" },
+      "description": "Bilingual news articles published by editors."
+    },
+    "/liveUpdates/{updateId}": {
+      "schema": { "$ref": "#/entities/LiveUpdate" },
+      "description": "Real-time breaking local updates."
+    },
+    "/videoReports/{videoId}": {
+      "schema": { "$ref": "#/entities/VideoReport" },
+      "description": "Local field video reports."
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "#/entities/Subscriber" },
+      "description": "Newsletter email subscribers (PII restricted to admin)."
+    },
+    "/adSlots/{slotId}": {
+      "schema": { "$ref": "#/entities/AdSlot" },
+      "description": "Third-party monetization ad slots."
+    }
+  }
+}

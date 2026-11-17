@@ -1,0 +1,6 @@
+{
+  "name": "Bulandsena.in",
+  "description": "Independent Marathi and English local journalism platform with live updates, video reports, trending news, and an editorial CMS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

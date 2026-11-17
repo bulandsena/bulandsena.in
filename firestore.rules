@@ -1,0 +1,211 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'dainikbulandsena@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isValidCategory(cat) {
+      return cat in ['civic', 'agriculture', 'transit', 'education', 'politics'];
+    }
+
+    // Validation Blueprints
+    function isValidArticle(data) {
+      return data.keys().hasAll([
+        'titleEn', 'titleMr', 'summaryEn', 'summaryMr',
+        'contentEn', 'contentMr', 'category', 'authorName',
+        'authorId', 'isFeatured', 'isTrending', 'readTimeMinutes',
+        'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'titleEn', 'titleMr', 'summaryEn', 'summaryMr',
+        'contentEn', 'contentMr', 'category', 'authorName',
+        'authorId', 'imageUrl', 'isFeatured', 'isTrending',
+        'readTimeMinutes', 'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.titleEn is string && data.titleEn.size() >= 3 && data.titleEn.size() <= 200 &&
+      data.titleMr is string && data.titleMr.size() >= 3 && data.titleMr.size() <= 240 &&
+      data.summaryEn is string && data.summaryEn.size() >= 10 && data.summaryEn.size() <= 500 &&
+      data.summaryMr is string && data.summaryMr.size() >= 10 && data.summaryMr.size() <= 600 &&
+      data.contentEn is string && data.contentEn.size() >= 20 && data.contentEn.size() <= 15000 &&
+      data.contentMr is string && data.contentMr.size() >= 20 && data.contentMr.size() <= 18000 &&
+      isValidCategory(data.category) &&
+      data.authorName is string && data.authorName.size() >= 2 && data.authorName.size() <= 100 &&
+      data.authorId is string && data.authorId == request.auth.uid &&
+      (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500)) &&
+      data.isFeatured is bool &&
+      data.isTrending is bool &&
+      data.readTimeMinutes is number && data.readTimeMinutes >= 1 && data.readTimeMinutes <= 60 &&
+      data.status in ['published', 'draft'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidLiveUpdate(data) {
+      return data.keys().hasAll(['textEn', 'textMr', 'locationEn', 'locationMr', 'category', 'authorId', 'createdAt']) &&
+      data.keys().hasOnly(['textEn', 'textMr', 'locationEn', 'locationMr', 'category', 'authorId', 'createdAt']) &&
+      data.textEn is string && data.textEn.size() >= 5 && data.textEn.size() <= 300 &&
+      data.textMr is string && data.textMr.size() >= 5 && data.textMr.size() <= 360 &&
+      data.locationEn is string && data.locationEn.size() >= 2 && data.locationEn.size() <= 80 &&
+      data.locationMr is string && data.locationMr.size() >= 2 && data.locationMr.size() <= 100 &&
+      isValidCategory(data.category) &&
+      data.authorId is string && data.authorId == request.auth.uid &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidVideoReport(data) {
+      return data.keys().hasAll([
+        'titleEn', 'titleMr', 'summaryEn', 'summaryMr',
+        'duration', 'thumbnailUrl', 'videoUrl', 'category',
+        'reporterEn', 'reporterMr', 'authorId', 'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'titleEn', 'titleMr', 'summaryEn', 'summaryMr',
+        'duration', 'thumbnailUrl', 'videoUrl', 'category',
+        'reporterEn', 'reporterMr', 'authorId', 'createdAt'
+      ]) &&
+      data.titleEn is string && data.titleEn.size() >= 3 && data.titleEn.size() <= 180 &&
+      data.titleMr is string && data.titleMr.size() >= 3 && data.titleMr.size() <= 220 &&
+      data.summaryEn is string && data.summaryEn.size() >= 10 && data.summaryEn.size() <= 400 &&
+      data.summaryMr is string && data.summaryMr.size() >= 10 && data.summaryMr.size() <= 480 &&
+      data.duration is string && data.duration.size() >= 2 && data.duration.size() <= 20 &&
+      data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500 &&
+      data.videoUrl is string && data.videoUrl.size() <= 500 &&
+      isValidCategory(data.category) &&
+      data.reporterEn is string && data.reporterEn.size() >= 2 && data.reporterEn.size() <= 100 &&
+      data.reporterMr is string && data.reporterMr.size() >= 2 && data.reporterMr.size() <= 120 &&
+      data.authorId is string && data.authorId == request.auth.uid &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidSubscriber(data) {
+      return data.keys().hasAll(['email', 'language', 'createdAt']) &&
+      data.keys().hasOnly(['email', 'language', 'createdAt']) &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
+      data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+      data.language in ['mr', 'en'] &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidAdSlot(data) {
+      return data.keys().hasAll(['placement', 'sponsorName', 'headlineEn', 'headlineMr', 'ctaUrl', 'isActive', 'updatedAt']) &&
+      data.keys().hasOnly(['placement', 'sponsorName', 'headlineEn', 'headlineMr', 'ctaUrl', 'isActive', 'updatedAt']) &&
+      data.placement in ['sidebar_top', 'article_footer'] &&
+      data.sponsorName is string && data.sponsorName.size() >= 2 && data.sponsorName.size() <= 100 &&
+      data.headlineEn is string && data.headlineEn.size() >= 4 && data.headlineEn.size() <= 160 &&
+      data.headlineMr is string && data.headlineMr.size() >= 4 && data.headlineMr.size() <= 200 &&
+      data.ctaUrl is string && data.ctaUrl.size() <= 500 &&
+      data.isActive is bool &&
+      data.updatedAt is timestamp;
+    }
+
+    // Public news articles (published readable by all; drafts & writes restricted to admin)
+    match /articles/{articleId} {
+      allow get: if isValidId(articleId) && (existing().status == 'published' || isAdmin());
+      allow list: if existing().status == 'published' || isAdmin();
+      allow create: if isAdmin() && isValidId(articleId) && isValidArticle(incoming()) &&
+        incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(articleId) && isValidArticle(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().authorId == existing().authorId &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // Live local journalism dispatches
+    match /liveUpdates/{updateId} {
+      allow get: if isValidId(updateId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(updateId) && isValidLiveUpdate(incoming()) &&
+        incoming().createdAt == request.time;
+      allow delete: if isAdmin() && isValidId(updateId);
+    }
+
+    // Field video reports
+    match /videoReports/{videoId} {
+      allow get: if isValidId(videoId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(videoId) && isValidVideoReport(incoming()) &&
+        incoming().createdAt == request.time;
+      allow delete: if isAdmin() && isValidId(videoId);
+    }
+
+    // Newsletter subscribers (PII isolated: public can create, only admin can read/list/delete)
+    match /subscribers/{subscriberId} {
+      allow get: if isAdmin() && isValidId(subscriberId);
+      allow list: if isAdmin();
+      allow create: if isValidId(subscriberId) && isValidSubscriber(incoming()) &&
+        incoming().createdAt == request.time;
+      allow delete: if isAdmin() && isValidId(subscriberId);
+    }
+
+    // Monetization ad slots
+    match /adSlots/{slotId} {
+      allow get: if isValidId(slotId);
+      allow list: if true;
+      allow create, update: if isAdmin() && isValidId(slotId) && isValidAdSlot(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(slotId);
+    }
+
+    function isValidMarketPick(data) {
+      return data.keys().hasAll([
+        'symbol', 'segment', 'action', 'strikePrice', 'entryPrice',
+        'targetPrice', 'stopLoss', 'noteMr', 'noteEn', 'authorId', 'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'symbol', 'segment', 'action', 'strikePrice', 'entryPrice',
+        'targetPrice', 'stopLoss', 'noteMr', 'noteEn', 'authorId', 'createdAt'
+      ]) &&
+      data.symbol is string && data.symbol.size() >= 2 && data.symbol.size() <= 80 &&
+      data.segment in ['equity', 'options', 'futures'] &&
+      data.action in ['BUY', 'SELL'] &&
+      data.strikePrice is string && data.strikePrice.size() <= 60 &&
+      data.entryPrice is string && data.entryPrice.size() >= 1 && data.entryPrice.size() <= 40 &&
+      data.targetPrice is string && data.targetPrice.size() >= 1 && data.targetPrice.size() <= 40 &&
+      data.stopLoss is string && data.stopLoss.size() >= 1 && data.stopLoss.size() <= 40 &&
+      data.noteMr is string && data.noteMr.size() <= 300 &&
+      data.noteEn is string && data.noteEn.size() <= 300 &&
+      data.authorId is string && data.authorId == request.auth.uid &&
+      data.createdAt is timestamp;
+    }
+
+    // Daily Share Market & F&O Option Trading Picks
+    match /marketPicks/{pickId} {
+      allow get: if isValidId(pickId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(pickId) && isValidMarketPick(incoming()) &&
+        incoming().createdAt == request.time;
+      allow delete: if isAdmin() && isValidId(pickId);
+    }
+
+    // Admin registry (read-only by self or admin)
+    match /admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+  }
+}
